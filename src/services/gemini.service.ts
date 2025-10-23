@@ -3,7 +3,7 @@ import { GoogleGenAI, Tool, Type } from '@google/genai';
 
 // IMPORTANT: Add your Gemini API key here.
 // To get an API key, visit https://makersuite.google.com/app/apikey
-const API_KEY = 'YOUR_API_KEY_HERE';
+const API_KEY = "YOUR_GEMINI_API_KEY";
 
 type ImageAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
 
@@ -23,7 +23,7 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    // The user must replace 'YOUR_API_KEY_HERE' with their actual key.
+    // The user must replace 'YOUR_GEMINI_API_KEY' with their actual key.
     // The application will throw an API error at runtime if the key is invalid or missing.
     this.ai = new GoogleGenAI({ apiKey: API_KEY });
   }
@@ -35,7 +35,7 @@ export class GeminiService {
     mimeType?: string
   ): Promise<string> {
     try {
-      if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
+      if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY') {
         throw new Error(
           'API_KEY not set. Please add your API key to src/services/gemini.service.ts'
         );
@@ -122,7 +122,7 @@ export class GeminiService {
     aspectRatio: ImageAspectRatio
   ): Promise<string> {
     try {
-      if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
+      if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY') {
         throw new Error(
           'API_KEY not set. Please add your API key to src/services/gemini.service.ts'
         );
@@ -194,7 +194,7 @@ export class GeminiService {
     mimeType: string
   ): Promise<AssistantResponse> {
     try {
-      if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
+      if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY') {
         throw new Error(
           'API_KEY not set. Please add your API key to src/services/gemini.service.ts'
         );
