@@ -84,27 +84,16 @@ export class GeminiService {
     } catch (error: any) {
       console.error('Error generating video:', error);
 
-      // Convert the entire error to a string for reliable checking.
-      let errorText = '';
-      if (error instanceof Error) {
-        errorText = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        errorText = JSON.stringify(error);
-      } else {
-        errorText = String(error);
-      }
+      // Stringify the entire error to reliably check for keywords.
+      const errorString = JSON.stringify(error);
 
-      if (errorText.includes('RESOURCE_EXHAUSTED') || errorText.includes('quota exceeded')) {
+      if (errorString.includes('RESOURCE_EXHAUSTED') || errorString.includes('quota exceeded')) {
         throw new Error('Video generation failed because the API usage quota has been exceeded. Please try again later.');
       }
       
-      // Try to extract a more specific message if it's from the standard API error format.
-      if (typeof error === 'object' && error?.error?.message) {
-        throw new Error(`Failed to generate video: ${error.error.message}`);
-      }
-      
-      // Fallback to the stringified error.
-      throw new Error(`Failed to generate video: ${errorText}`);
+      // Try to extract a more specific message, falling back to the stringified version.
+      const message = error?.error?.message || error?.message || errorString;
+      throw new Error(`Failed to generate video: ${message}`);
     }
   }
 
@@ -225,7 +214,9 @@ export class GeminiService {
             { inlineData: { mimeType: mimeType, data: audioBase64 } }
           ]
         },
-        tools: tools,
+        config: {
+          tools: tools,
+        },
       });
       
       const assistantResponse: AssistantResponse = { transcription: "Could not transcribe audio." };
