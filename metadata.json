@@ -1,0 +1,7 @@
+{
+  "name": "Red1 LOGO & INTRO Generator",
+  "description": "An application that generates short intro animations or edits images using text prompts and Google's Gemini and Imagen models.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
