@@ -1,10 +1,6 @@
 import { Injectable } from '@angular/core';
 import { GoogleGenAI, Tool, Type } from '@google/genai';
 
-// IMPORTANT: Add your Gemini API key here.
-// To get an API key, visit https://makersuite.google.com/app/apikey
-const API_KEY = "YOUR_GEMINI_API_KEY";
-
 type ImageAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
 
 export interface AssistantResponse {
@@ -23,9 +19,8 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    // The user must replace 'YOUR_GEMINI_API_KEY' with their actual key.
-    // The application will throw an API error at runtime if the key is invalid or missing.
-    this.ai = new GoogleGenAI({ apiKey: API_KEY });
+    // Fix: Use environment variable for the API key as required.
+    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   async generateVideo(
@@ -35,12 +30,6 @@ export class GeminiService {
     mimeType?: string
   ): Promise<string> {
     try {
-      if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY') {
-        throw new Error(
-          'API_KEY not set. Please add your API key to src/services/gemini.service.ts'
-        );
-      }
-      
       const payload: any = {
         model: 'veo-2.0-generate-001',
         prompt: prompt,
@@ -84,8 +73,9 @@ export class GeminiService {
 
       console.log('Video generated. Download link:', downloadLink);
 
+      // Fix: Use environment variable for the API key as required.
       // Fetch the video data. The API key must be appended to the URI.
-      const videoResponse = await fetch(`${downloadLink}&key=${API_KEY}`);
+      const videoResponse = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
       if (!videoResponse.ok) {
         throw new Error(
           `Failed to download video: ${videoResponse.statusText}`
@@ -96,22 +86,24 @@ export class GeminiService {
       return URL.createObjectURL(videoBlob);
     } catch (error: any) {
       console.error('Error generating video:', error);
-
-      // Stringify the entire error to reliably check for keywords.
-      const errorString = JSON.stringify(error);
+      
+      // Check both the stringified error and its message property for quota details.
+      const errorMessage = error?.message ? String(error.message) : '';
+      const errorContent = JSON.stringify(error) + errorMessage;
 
       if (
-        errorString.includes('RESOURCE_EXHAUSTED') ||
-        errorString.includes('quota exceeded')
+        errorContent.includes('RESOURCE_EXHAUSTED') ||
+        errorContent.includes('quota exceeded') ||
+        errorContent.includes('Lifetime quota exceeded')
       ) {
         throw new Error(
           'Video generation failed because the API usage quota has been exceeded. Please try again later.'
         );
       }
-
-      // Try to extract a more specific message, falling back to the stringified version.
-      const message = error?.error?.message || error?.message || errorString;
-      throw new Error(`Failed to generate video: ${message}`);
+      
+      // Use the specific message if available, otherwise a generic one.
+      const message = errorMessage || 'An unexpected error occurred. Please check the console for details.';
+      throw new Error(message);
     }
   }
 
@@ -122,11 +114,6 @@ export class GeminiService {
     aspectRatio: ImageAspectRatio
   ): Promise<string> {
     try {
-      if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY') {
-        throw new Error(
-          'API_KEY not set. Please add your API key to src/services/gemini.service.ts'
-        );
-      }
       // Step 1: Describe the original image using Gemini
       const describeResponse = await this.ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -194,11 +181,6 @@ export class GeminiService {
     mimeType: string
   ): Promise<AssistantResponse> {
     try {
-      if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY') {
-        throw new Error(
-          'API_KEY not set. Please add your API key to src/services/gemini.service.ts'
-        );
-      }
       const tools: Tool[] = [
         {
           functionDeclarations: [
@@ -288,9 +270,7 @@ export class GeminiService {
             { inlineData: { mimeType: mimeType, data: audioBase64 } },
           ],
         },
-        config: {
-          tools: tools,
-        },
+        tools: tools,
       });
 
       const assistantResponse: AssistantResponse = {

@@ -4,6 +4,7 @@ import {
   signal,
   inject,
   OnInit,
+  OnDestroy,
 } from '@angular/core';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { GeminiService, AssistantResponse } from './services/gemini.service';
@@ -23,542 +24,420 @@ interface ChatMessage {
 type ImageAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
 type IntroStyle = 'cinematic' | 'electric' | 'watercolor';
 type IntroDuration = 'short' | 'medium' | 'long';
-
+type AppMode = 'video' | 'image' | 'assistant';
 
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.component.html',
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   private readonly geminiService = inject(GeminiService);
   private readonly sanitizer = inject(DomSanitizer);
 
-  // Sound effects for the assistant
-  private readonly assistantSoundStart = 'data:audio/wav;base64,UklGRkYAAABXQVZFZm10IBAAAAABAAEARKwAAESsAAABAAgAZGF0YUIBAAD8/v/9/v3++v/7//j/+/35//j/9v/y//T/8v/x//H/8P/v/+7/7v/t/+z/7P/r/+v/7P/t/+3/7f/u/+7/8P/y//X/9//5//r//P8=';
-  private readonly assistantSoundEnd = 'data:audio/wav;base64,UklGRkYAAABXQVZFZm10IBAAAAABAAEARKwAAESsAAABAAgAZGF0YUIBAAC7/7v/u/+6/7r/uv+5/7j/tv+1/7T/s/+y/7L/sv+z/7T/tf+2/7f/uf+6/7v/vP/A/8P/y//T/+v/AP8F/w0=';
-  private readonly introStartSound = 'data:audio/wav;base64,UklGRlwBAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YVgBAAD/////+P/6//z//v8A////AP/+/+j/3/7c/tj+zP7G/sD9v/22/bH9qf2k/aP9o/2l/ab9qv2v/bf9w/3M/ej+9v8HADIASgBvAIgAowCqALMAtQC7AMUA0ADrAP4BIwFEAV0BnAHFAdoB9AIhAnYCpQK/As0C4wL9AwwDVgOIA6YD3gP/BCsFOgWyBgoGZgc3B64H9ggXCJ4IqQjNCNYI6Qj+CgALRgsnC1sLpQvVDMsM+g0BDYEO0g7lDzAP9hALEXYRohG9EdMSLxPGFQsV/hblF6sY8RnbGe4aDhv5HPId/R5kH00f6yAHIWUigSLMJA0mPycAJ2co5yrzK+gsGzE7Mmsz8zblN/c5pDoeO8U81j23Ptw/BEAsQXRB8kKyQzZDW0O8Q/dFNEV0RjZHNkd4R9BI4ko/S3VMh01vTmdOjk/gUFhQ3FFuUdpSBVJdUtdS8FOpVUnVj5WX1dwV9JYxlmAWc5aNFqyW8Jc/F8EYMRiNGP0ZDZlZmfWag5rHm28dDJ4Un1Sg2KXcp9yoXKtcr1y0bLpcyxzRXN7c9J0JvUodV51kHWldfR2EXb0d7d4Fvi/+P/5P/n/+r/8P/3//3//v8=';
-  private readonly introSuccessSound = 'data:audio/wav;base64,UklGRiQCAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQACAACAP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/gD+AP4A/g- ';
-  private readonly introErrorSound = 'data:audio/wav;base64,UklGRqYAAABXQVZFZm10IBAAAAABAAEARKwAAESsAAABAAgAZGF0YZAAAACZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZm- ';
+  // Sound effects - Replaced with new valid, clean base64 data
+  private readonly assistantSoundStart = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAESsAAABAAgAZGF0YQQAAAAAAAB/AAAB';
+  private readonly assistantSoundEnd = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAESsAAABAAgAZGF0YQQAAAAAAAD/AAAA/w==';
+  private readonly introStartSound = 'data:audio/wav;base64,UklGRqQAAABXQVZFZm10IBAAAAABAAEARKwAAESsAAABAAgAZGF0YZgAAAD8/v39/v7+/v79/v3+/Pz7+/v6+fr5+fj4+Pf3+fb2+fX1+fT0+fPy+fLx+fDv+fDu+e/t+e7s+e3r+evq+er自家+ejo+efn+efm+ebl+eXk+eTj+ePi+eHg+eDf+d/e+d/d+d7c+d3b+dza+dzY+dvX+drW+dnV+djU+dfT+dbS+dTQ+dPO+dLM+dHK+dHG+dDD+c++AgECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==';
+  private readonly introSuccessSound = 'data:audio/wav;base64,UklGRkIAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YYwBAACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIAAAICAgACAgIA-';
+  private readonly introErrorSound = 'data:audio/wav;base64,UklGRlwBAABXQVZFZm10IBAAAAABAAEARKwAAESsAAABAAgAZGF0YVABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==';
 
-  // Intro screen visibility
+  // Component state signals
   showIntro = signal(true);
-
-  // App mode
-  mode = signal<'video' | 'image' | 'assistant'>('video');
-
-  // Common state
-  uploadedFile = signal<UploadedFile | null>(null);
+_mode: AppMode = 'video';
+  mode = signal<AppMode>('video');
   error = signal<string | null>(null);
 
-  // Video Form state
-  videoSubject = signal<string>('');
-  videoAspectRatio = signal<'16:9' | '9:16'>('16:9');
-  introStyle = signal<IntroStyle>('cinematic');
-  introDuration = signal<IntroDuration>('medium');
-  uploadedSound = signal<UploadedFile | null>(null);
-  uploadedSoundUrl = signal<SafeUrl | null>(null);
-  exampleVideoSubjects = signal<string[]>([
-    'A happy, red cartoon dog',
-    'A majestic lion with a golden mane, roaring',
-    'A steaming cup of coffee with a retro neon glow',
-    'A sleek, futuristic logo with blue circuit lines',
-  ]);
-
-  // Image Editing State
-  editPrompt = signal<string>('');
-  imageAspectRatio = signal<ImageAspectRatio>('1:1');
-  isEditing = signal(false);
-  editedImage = signal<SafeUrl | null>(null);
-  private editedImageBase64 = signal<string | null>(null);
-  exampleEditPrompts = signal<string[]>([
-    'Add a retro, vintage filter',
-    'Make it look like a watercolor painting',
-    'Change the background to a futuristic city',
-    'Turn the main subject into a cartoon character',
-  ]);
-
-  // Video Generation state
+  // Video Generator State
   isGeneratingVideo = signal(false);
   generationStatus = signal('');
-  
-  // Video Result state
+  uploadedFile = signal<UploadedFile | null>(null);
+  uploadedSound = signal<UploadedFile | null>(null);
+  uploadedSoundUrl = signal<SafeUrl | null>(null);
+  videoSubject = signal('a neon hologram of a cat driving at top speed');
+  videoAspectRatio = signal<'16:9' | '9:16'>('16:9');
+  introStyle = signal<IntroStyle>('electric');
+  introDuration = signal<IntroDuration>('medium');
   generatedVideoUrl = signal<SafeUrl | null>(null);
-  private videoBlobUrl = signal<string | null>(null);
+  exampleVideoSubjects = signal([
+    'A majestic lion roaring on a mountain',
+    'A futuristic cityscape at night',
+    'An abstract explosion of colors',
+    'A hummingbird in slow motion',
+  ]);
 
-  // Video player state
+  // Video Player State
   isPlaying = signal(false);
+  isMuted = signal(false);
+  volume = signal(0.75);
   currentTime = signal(0);
   duration = signal(0);
-  isMuted = signal(false);
-  volume = signal(1);
 
-  // AI Assistant state
+  // Image Editor State
+  isEditing = signal(false);
+  editPrompt = signal('Change the background to a snowy mountain.');
+  imageAspectRatio = signal<ImageAspectRatio>('1:1');
+  editedImage = signal<string | null>(null);
+  exampleEditPrompts = signal([
+    'Make it look like an oil painting',
+    'Add a vintage, sepia tone filter',
+    'Turn the subject into a cartoon character',
+    'Place the subject on a tropical beach',
+  ]);
+
+  // AI Assistant State
   isRecording = signal(false);
   isAssistantResponding = signal(false);
-  conversation = signal<ChatMessage[]>([
-    {
-      speaker: 'ai',
-      text: "Hello! I'm your creative assistant. You can ask me for ideas, or tell me to change settings. For example, say 'Set the video subject to a futuristic city.' How can I help?"
-    }
-  ]);
+  conversation = signal<ChatMessage[]>([]);
+
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
 
-
-  ngOnInit(): void {
+  ngOnInit() {
     // Hide the intro splash screen after a delay
-    setTimeout(() => {
-      this.showIntro.set(false);
-    }, 2500);
+    setTimeout(() => this.showIntro.set(false), 2000);
   }
 
-  setMode(newMode: 'video' | 'image' | 'assistant'): void {
-    if (this.mode() === newMode) return;
+  ngOnDestroy() {
+    // Clean up media recorder resources
+    this.stopRecording();
+  }
+
+  // --- Common Methods ---
+
+  setMode(newMode: AppMode) {
     this.mode.set(newMode);
-    this.error.set(null);
-    // Stop any recording if switching modes
-    if (this.isRecording()) {
-      this.mediaRecorder?.stop();
+    this.error.set(null); // Clear errors when switching modes
+    // Reset forms when switching modes to avoid confusion
+    this.resetVideoForm(false);
+    this.resetImageEditor(false);
+    if (newMode === 'assistant' && this.conversation().length === 0) {
+      this.conversation.set([
+        { speaker: 'ai', text: 'Hello! How can I help you today? You can ask me to switch tabs, set prompts, and generate content.' }
+      ]);
     }
   }
 
-  onFileSelected(event: Event): void {
+  private playSound(sound: string) {
+    new Audio(sound).play().catch(e => console.error("Error playing sound:", e));
+  }
+  
+  // --- File Handling ---
+
+  // Fix: Changed parameter type from File to Blob to accommodate audio recordings.
+  private async fileToBase64(file: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = (error) => reject(error);
+    });
+  }
+
+  async onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       const file = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        const fullDataUrl = e.target.result as string;
-        const base64 = fullDataUrl.split(',')[1];
-        this.uploadedFile.set({
-          name: file.name,
-          base64: base64,
-          mimeType: file.type,
-        });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const base64 = await this.fileToBase64(file);
+        this.uploadedFile.set({ name: file.name, base64, mimeType: file.type });
+      } catch (err) {
+        this.error.set('Failed to read the selected file.');
+        console.error(err);
+      }
     }
   }
-
-  onSoundSelected(event: Event): void {
+  
+  async onSoundSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       const file = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        const fullDataUrl = e.target.result as string;
-        const base64 = fullDataUrl.split(',')[1];
-        this.uploadedSound.set({
-          name: file.name,
-          base64: base64,
-          mimeType: file.type,
-        });
-        this.uploadedSoundUrl.set(this.sanitizer.bypassSecurityTrustUrl(fullDataUrl));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const base64 = await this.fileToBase64(file);
+        this.uploadedSound.set({ name: file.name, base64, mimeType: file.type });
+        const objectUrl = URL.createObjectURL(file);
+        this.uploadedSoundUrl.set(this.sanitizer.bypassSecurityTrustUrl(objectUrl));
+      } catch (err) {
+        this.error.set('Failed to read the selected sound file.');
+        console.error(err);
+      }
     }
   }
 
-  // --- Video Generation Methods ---
+  // --- Video Generation ---
 
-  async generateVideo(): Promise<void> {
+  async generateVideo() {
     const subject = this.videoSubject();
     if (!subject) {
-      this.error.set('Please provide a subject for the intro.');
+      this.error.set('Please describe your subject before generating.');
       return;
     }
-    const currentFile = this.uploadedFile();
 
-    // Construct the detailed prompt from UI selections
-    const stylePrompts: Record<IntroStyle, string> = {
-      cinematic: 'A cinematic, dramatic zoom into the subject, with epic lighting',
-      electric: 'Electric energy and lightning courses through the subject, revealing it with a brilliant flash',
-      watercolor: 'A beautiful watercolor splash on a paper texture, which resolves to perfectly reveal the subject',
-    };
-    const durationPrompts: Record<IntroDuration, string> = {
-      short: 'The video should be a very short, impactful 3-second clip.',
-      medium: 'The video should be a 5-second clip.',
-      long: 'The video should be a slower, more cinematic 8-second shot.',
-    };
-    const finalPrompt = `${stylePrompts[this.introStyle()]}, featuring: "${subject}". ${durationPrompts[this.introDuration()]}`;
-    console.log('Final video prompt:', finalPrompt);
-    
-    this.playSound(this.introStartSound);
     this.isGeneratingVideo.set(true);
     this.error.set(null);
-    if (this.videoBlobUrl()) {
-      URL.revokeObjectURL(this.videoBlobUrl()!);
-    }
-    this.generatedVideoUrl.set(null);
-    this.videoBlobUrl.set(null);
-
-    const messages = [
-      'Contacting the AI model...',
-      'Warming up the video generator...',
-      'This can take a few minutes, please wait.',
-      'Rendering frames...',
-      'Finalizing the video...',
-      'Almost there...',
-    ];
-    this.generationStatus.set(messages[0]);
-    let messageIndex = 1;
-    const intervalId = setInterval(() => {
-      this.generationStatus.set(messages[messageIndex % messages.length]);
-      messageIndex++;
-    }, 8000);
+    this.playSound(this.introStartSound);
 
     try {
-      const blobUrl = await this.geminiService.generateVideo(
+      this.generationStatus.set('Crafting a detailed prompt for the AI...');
+      const durationText =
+        this.introDuration() === 'short'
+          ? '3-4 seconds'
+          : this.introDuration() === 'medium'
+          ? '5-6 seconds'
+          : '8-10 seconds';
+      
+      let finalPrompt = `Create a ${this.introStyle()}, professional intro video, approximately ${durationText} long. The subject is "${subject}".`;
+
+      if(this.uploadedFile()){
+        finalPrompt += " The intro should prominently feature the provided logo/image, integrating it naturally with the animation."
+      } else {
+         finalPrompt += " The intro should focus solely on the animated subject, ending with a clear, visually appealing moment."
+      }
+      
+      this.generationStatus.set('Sending request to the video model...');
+      const videoUrl = await this.geminiService.generateVideo(
         finalPrompt,
         this.videoAspectRatio(),
-        currentFile?.base64,
-        currentFile?.mimeType
+        this.uploadedFile()?.base64,
+        this.uploadedFile()?.mimeType,
       );
-      this.videoBlobUrl.set(blobUrl);
-      this.generatedVideoUrl.set(
-        this.sanitizer.bypassSecurityTrustUrl(blobUrl)
-      );
+      this.generatedVideoUrl.set(this.sanitizer.bypassSecurityTrustUrl(videoUrl));
       this.playSound(this.introSuccessSound);
     } catch (err) {
+      this.error.set((err as Error).message);
       this.playSound(this.introErrorSound);
-      this.error.set(
-        err instanceof Error ? err.message : 'An unknown error occurred.'
-      );
     } finally {
-      clearInterval(intervalId);
       this.isGeneratingVideo.set(false);
       this.generationStatus.set('');
     }
   }
 
-  resetVideoForm(): void {
-    if (this.videoBlobUrl()) {
-      URL.revokeObjectURL(this.videoBlobUrl()!);
-    }
+  resetVideoForm(fullReset = true) {
+    this.isGeneratingVideo.set(false);
     this.generatedVideoUrl.set(null);
-    this.videoBlobUrl.set(null);
-    this.videoSubject.set('');
-    this.uploadedFile.set(null);
-    this.uploadedSound.set(null);
-    this.uploadedSoundUrl.set(null);
-    this.error.set(null);
-    this.videoAspectRatio.set('16:9');
-    this.introStyle.set('cinematic');
-    this.introDuration.set('medium');
-    this.isPlaying.set(false);
-    this.currentTime.set(0);
-    this.duration.set(0);
+    if (fullReset) {
+      this.uploadedFile.set(null);
+      this.uploadedSound.set(null);
+      this.uploadedSoundUrl.set(null);
+      this.videoSubject.set('');
+    }
   }
-
-  downloadVideo(): void {
-    const url = this.videoBlobUrl();
+  
+  downloadVideo() {
+    const url = this.generatedVideoUrl() as string;
     if (url) {
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'ai-intro-video.mp4';
+      a.download = 'red1-intro.mp4';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Note: We don't revoke the object URL here so the video can still be played.
+    }
+  }
+  
+  // --- Video Player Controls ---
+
+  togglePlayPause(video: HTMLVideoElement, audio: HTMLAudioElement) {
+    if (video.paused) {
+      video.play();
+      if(this.uploadedSoundUrl()) audio.play();
+    } else {
+      video.pause();
+      if(this.uploadedSoundUrl()) audio.pause();
+    }
+  }
+  
+  onTimeUpdate(video: HTMLVideoElement) {
+    this.currentTime.set(video.currentTime);
+  }
+
+  onLoadedMetadata(video: HTMLVideoElement) {
+    this.duration.set(video.duration);
+  }
+
+  onSeek(event: Event, video: HTMLVideoElement, audio: HTMLAudioElement) {
+    const time = parseFloat((event.target as HTMLInputElement).value);
+    video.currentTime = time;
+    if(this.uploadedSoundUrl()) audio.currentTime = time;
+    this.currentTime.set(time);
+  }
+  
+  toggleMute(audio: HTMLAudioElement) {
+    audio.muted = !audio.muted;
+    this.isMuted.set(audio.muted);
+  }
+  
+  onVolumeChange(event: Event, audio: HTMLAudioElement) {
+    const volumeLevel = parseFloat((event.target as HTMLInputElement).value);
+    audio.volume = volumeLevel;
+    this.volume.set(volumeLevel);
+    if (volumeLevel > 0 && audio.muted) {
+      audio.muted = false;
+      this.isMuted.set(false);
+    }
+  }
+  
+  formatTime(seconds: number): string {
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+  }
+
+
+  // --- Image Editing ---
+
+  async generateImage() {
+    const file = this.uploadedFile();
+    const prompt = this.editPrompt();
+    if (!file || !prompt) {
+      this.error.set('Please upload an image and provide an edit prompt.');
+      return;
+    }
+    this.isEditing.set(true);
+    this.error.set(null);
+    this.playSound(this.introStartSound);
+
+    try {
+      const base64Image = await this.geminiService.editImage(
+        prompt,
+        file.base64,
+        file.mimeType,
+        this.imageAspectRatio()
+      );
+      this.editedImage.set('data:image/png;base64,' + base64Image);
+      this.playSound(this.introSuccessSound);
+    } catch (err) {
+      this.error.set((err as Error).message);
+      this.playSound(this.introErrorSound);
+    } finally {
+      this.isEditing.set(false);
+    }
+  }
+
+  resetImageEditor(fullReset = true) {
+    this.isEditing.set(false);
+    this.editedImage.set(null);
+    if (fullReset) {
+      this.uploadedFile.set(null);
+      this.editPrompt.set('');
+    }
+  }
+  
+  downloadImage() {
+    const url = this.editedImage();
+    if (url) {
+      const a = document.createElement('a');
+a.href = url;
+      a.download = 'red1-edited-image.png';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
     }
   }
 
-  // --- Image Editing Methods ---
+  // --- AI Assistant ---
 
-  async generateImage(): Promise<void> {
-    const currentPrompt = this.editPrompt();
-    const currentFile = this.uploadedFile();
-
-    if (!currentPrompt || !currentFile) {
-        this.error.set('Please provide an edit instruction and an image.');
-        return;
+  async toggleRecording() {
+    if (this.isRecording()) {
+      this.stopRecording();
+    } else {
+      await this.startRecording();
     }
+  }
 
-    this.isEditing.set(true);
-    this.error.set(null);
-    this.editedImage.set(null);
-    this.editedImageBase64.set(null);
+  private async startRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.error.set('Audio recording is not supported by your browser.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.mediaRecorder = new MediaRecorder(stream);
+      this.audioChunks = [];
+      this.mediaRecorder.ondataavailable = (event) => {
+        this.audioChunks.push(event.data);
+      };
+      this.mediaRecorder.onstop = () => this.processRecording();
+      this.mediaRecorder.start();
+      this.isRecording.set(true);
+      this.playSound(this.assistantSoundStart);
+    } catch (err) {
+      this.error.set('Could not access microphone. Please grant permission.');
+      console.error('Microphone access error:', err);
+    }
+  }
+
+  private stopRecording() {
+    if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+      this.mediaRecorder.stop();
+      this.isRecording.set(false);
+      this.playSound(this.assistantSoundEnd);
+    }
+     if (this.mediaRecorder) {
+        this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        this.mediaRecorder = null;
+    }
+  }
+  
+  private async processRecording() {
+    if (this.audioChunks.length === 0) return;
+
+    this.isAssistantResponding.set(true);
+    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+    this.audioChunks = [];
 
     try {
-        const newImageBase64 = await this.geminiService.editImage(
-            currentPrompt,
-            currentFile.base64,
-            currentFile.mimeType,
-            this.imageAspectRatio()
-        );
-        this.editedImageBase64.set(newImageBase64);
-        this.editedImage.set(this.sanitizer.bypassSecurityTrustUrl('data:image/png;base64,' + newImageBase64));
+      const base64 = await this.fileToBase64(audioBlob);
+      const result = await this.geminiService.processAudio(base64, audioBlob.type);
+      
+      this.conversation.update(c => [...c, { speaker: 'user', text: result.transcription }]);
+      
+      // Give the UI a moment to update before showing the AI response
+      setTimeout(() => {
+        this.handleAssistantResponse(result);
+        this.isAssistantResponding.set(false);
+      }, 500);
+
     } catch (err) {
-        this.error.set(err instanceof Error ? err.message : 'An unknown error occurred.');
-    } finally {
-        this.isEditing.set(false);
+      this.error.set((err as Error).message);
+      this.isAssistantResponding.set(false);
     }
   }
-
-  downloadImage(): void {
-    const base64 = this.editedImageBase64();
-    if (base64) {
-        const byteCharacters = atob(base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], {type: 'image/png'});
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'ai-edited-image.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-  }
-
-  resetImageEditor(): void {
-      this.editedImage.set(null);
-      this.editedImageBase64.set(null);
-      this.editPrompt.set('');
-      this.uploadedFile.set(null);
-      this.error.set(null);
-      this.imageAspectRatio.set('1:1');
-  }
-
-
-  // --- AI Assistant Methods ---
-  async toggleRecording(): Promise<void> {
-    if (this.isRecording()) {
-      this.mediaRecorder?.stop();
-    } else {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        this.mediaRecorder = new MediaRecorder(stream);
-        this.audioChunks = [];
   
-        this.mediaRecorder.ondataavailable = (event) => {
-          this.audioChunks.push(event.data);
-        };
-  
-        this.mediaRecorder.onstop = async () => {
-          this.isRecording.set(false);
-          const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
-          const audioBlob = new Blob(this.audioChunks, { type: mimeType });
-          const reader = new FileReader();
-          reader.readAsDataURL(audioBlob);
-          reader.onloadend = async () => {
-            const base64String = (reader.result as string).split(',')[1];
-            this.isAssistantResponding.set(true);
-            this.error.set(null);
-  
-            try {
-              const result = await this.geminiService.processAudio(base64String, mimeType);
-              
-              if (result.transcription && result.transcription !== "Could not transcribe audio.") {
-                this.conversation.update(c => [...c, { speaker: 'user', text: result.transcription }]);
-              }
-
-              if (result.functionCall) {
-                this.handleFunctionCall(result.functionCall);
-              } else if (result.text) {
-                this.conversation.update(c => [...c, { speaker: 'ai', text: result.text! }]);
-                this.speak(result.text);
-              }
-
-            } catch (err) {
-              const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-              this.error.set(errorMessage);
-              this.conversation.update(c => [...c, { speaker: 'ai', text: `Sorry, I encountered an error: ${errorMessage}` }]);
-            } finally {
-              this.isAssistantResponding.set(false);
-            }
-          };
-          stream.getTracks().forEach(track => track.stop());
-        };
-  
-        this.mediaRecorder.start();
-        this.isRecording.set(true);
-      } catch (err) {
-        console.error('Error accessing microphone:', err);
-        this.error.set('Could not access the microphone. Please grant permission and try again.');
-      }
-    }
-  }
-
-  private handleFunctionCall(functionCall: { name: string; args: any }): void {
-    const { name, args } = functionCall;
-    let confirmationMessage = '';
-  
-    switch (name) {
-      case 'setMode':
-        const mode = args.mode as 'video' | 'image' | 'assistant';
-        if (['video', 'image', 'assistant'].includes(mode)) {
-          this.setMode(mode);
-          confirmationMessage = `Okay, I've switched to the ${mode} tab.`;
-        } else {
-          confirmationMessage = `Sorry, I can't find a tab named '${mode}'.`;
-        }
-        break;
-  
-      case 'setPrompt':
-        const prompt = args.prompt as string;
-        const promptTarget = args.target as 'video' | 'image';
-        if (promptTarget === 'video') {
-          this.videoSubject.set(prompt);
-          confirmationMessage = `I've set the video subject.`;
-          if (this.mode() !== 'video') this.setMode('video');
-        } else if (promptTarget === 'image') {
-          this.editPrompt.set(prompt);
-          confirmationMessage = `I've set the image editing prompt.`;
-          if (this.mode() !== 'image') this.setMode('image');
-        } else {
-          confirmationMessage = `Sorry, I don't know which prompt to set. Please specify 'video' or 'image'.`;
-        }
-        break;
-  
-      case 'setAspectRatio':
-        const aspectRatio = args.aspectRatio as string;
-        const ratioTarget = args.target as 'video' | 'image';
-        if (ratioTarget === 'video') {
-          const validRatios = ['16:9', '9:16'];
-          if (validRatios.includes(aspectRatio)) {
-            this.videoAspectRatio.set(aspectRatio as '16:9' | '9:16');
-            confirmationMessage = `Video aspect ratio set to ${aspectRatio}.`;
-            if (this.mode() !== 'video') this.setMode('video');
-          } else {
-            confirmationMessage = `Sorry, '${aspectRatio}' is not a valid ratio for video. Please use '16:9' or '9:16'.`;
-          }
-        } else if (ratioTarget === 'image') {
-          const validRatios: ImageAspectRatio[] = ['1:1', '16:9', '9:16', '4:3', '3:4'];
-          if (validRatios.includes(aspectRatio as ImageAspectRatio)) {
-            this.imageAspectRatio.set(aspectRatio as ImageAspectRatio);
-            confirmationMessage = `Image aspect ratio set to ${aspectRatio}.`;
-            if (this.mode() !== 'image') this.setMode('image');
-          } else {
-            confirmationMessage = `Sorry, '${aspectRatio}' is not a valid ratio for images.`;
-          }
-        }
-        break;
-        
-      case 'generate':
-        const generateTarget = args.target as 'video' | 'image';
-        if (generateTarget === 'video') {
-          if (!this.videoSubject()) {
-              confirmationMessage = "I can't start yet. Please set a subject first.";
-          } else {
-              this.setMode('video');
-              this.generateVideo();
-              confirmationMessage = "Okay, starting intro generation. This could take a few minutes.";
-          }
-        } else if (generateTarget === 'image') {
-          if (!this.uploadedFile() || !this.editPrompt()) {
-              confirmationMessage = "I can't start yet. Please upload an image and set an editing prompt first.";
-          } else {
-              this.setMode('image');
-              this.generateImage();
-              confirmationMessage = "Okay, I'm editing the image now.";
-          }
-        }
-        break;
-  
-      default:
-        confirmationMessage = `Sorry, I can't perform the action '${name}'.`;
+  private handleAssistantResponse(response: AssistantResponse) {
+    if(response.text) {
+      this.conversation.update(c => [...c, { speaker: 'ai', text: response.text! }]);
     }
     
-    if (confirmationMessage) {
-      this.conversation.update(c => [...c, { speaker: 'ai', text: confirmationMessage }]);
-      this.speak(confirmationMessage);
-    }
-  }
-
-  private playSound(soundUrl: string): void {
-    try {
-      if (soundUrl) {
-        const audio = new Audio(soundUrl);
-        audio.play().catch(e => console.error("Error playing sound:", e));
+    if (response.functionCall) {
+      const { name, args } = response.functionCall;
+      let confirmationText = '';
+      
+      switch(name) {
+        case 'setMode':
+          this.setMode(args['mode']);
+          confirmationText = `Okay, I've switched to the ${args['mode']} tab.`;
+          break;
+        case 'setPrompt':
+          if (args['target'] === 'video') this.videoSubject.set(args['prompt']);
+          else this.editPrompt.set(args['prompt']);
+          confirmationText = `Alright, I've set the ${args['target']} prompt.`;
+          break;
+        case 'setAspectRatio':
+           if (args['target'] === 'video') this.videoAspectRatio.set(args['aspectRatio']);
+           else this.imageAspectRatio.set(args['aspectRatio']);
+           confirmationText = `Done. The ${args['target']} aspect ratio is now ${args['aspectRatio']}.`;
+           break;
+        case 'generate':
+          if (args['target'] === 'video') this.generateVideo();
+          else this.generateImage();
+          confirmationText = `Okay, I'm starting the ${args['target']} generation now.`;
+          break;
+        default:
+          confirmationText = "Sorry, I'm not sure how to do that.";
       }
-    } catch (e) {
-      console.error("Could not create audio object", e);
+      this.conversation.update(c => [...c, { speaker: 'ai', text: confirmationText }]);
     }
-  }
-
-  private speak(text: string): void {
-    if ('speechSynthesis' in window && text) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-
-      // Play a sound when the speech finishes
-      utterance.onend = () => {
-        this.playSound(this.assistantSoundEnd);
-      };
-
-      // Play a sound when the speech starts
-      this.playSound(this.assistantSoundStart);
-      window.speechSynthesis.speak(utterance);
-
-    } else if (!text) {
-      console.warn('Speak function called with empty text.');
-    } else {
-      console.warn('Text-to-speech not supported in this browser.');
-    }
-  }
-
-
-  // --- Video Player Controls ---
-  togglePlayPause(video: HTMLVideoElement, audio?: HTMLAudioElement): void {
-    if (video.paused) {
-      video.play();
-      if (audio?.src) audio.play().catch(e => console.error("Audio play failed", e));
-    } else {
-      video.pause();
-      if (audio?.src) audio.pause();
-    }
-  }
-
-  onLoadedMetadata(video: HTMLVideoElement): void {
-    this.duration.set(video.duration);
-  }
-
-  onTimeUpdate(video: HTMLVideoElement): void {
-    this.currentTime.set(video.currentTime);
-  }
-
-  onSeek(event: Event, video: HTMLVideoElement, audio?: HTMLAudioElement): void {
-    const input = event.target as HTMLInputElement;
-    const newTime = Number(input.value);
-    video.currentTime = newTime;
-    if (audio?.src) {
-        audio.currentTime = newTime;
-    }
-  }
-
-  toggleMute(audio: HTMLAudioElement): void {
-    audio.muted = !audio.muted;
-    this.isMuted.set(audio.muted);
-  }
-
-  onVolumeChange(event: Event, audio: HTMLAudioElement): void {
-    const input = event.target as HTMLInputElement;
-    const newVolume = Number(input.value);
-    audio.volume = newVolume;
-    this.volume.set(newVolume);
-    if (newVolume > 0 && audio.muted) {
-      audio.muted = false;
-      this.isMuted.set(false);
-    } else if (newVolume === 0 && !audio.muted) {
-      audio.muted = true;
-      this.isMuted.set(true);
-    }
-  }
-
-  formatTime(timeInSeconds: number): string {
-    if (isNaN(timeInSeconds) || timeInSeconds < 0) {
-      return '0:00';
-    }
-    const minutes = Math.floor(timeInSeconds / 60);
-    const seconds = Math.floor(timeInSeconds % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 }
